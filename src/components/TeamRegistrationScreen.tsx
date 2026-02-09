@@ -205,23 +205,7 @@ export function TeamRegistrationScreen() {
 
     return (
         <div className="container">
-            {/* メンバー概要 */}
-            <div className="section">
-                <div className="section-title">登録済みメンバー</div>
-                {event.members.length === 0 ? (
-                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-                        設定画面からメンバーを追加してください
-                    </p>
-                ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
-                        {event.members.map((member) => (
-                            <span key={member.id} className="tag tag-inactive">
-                                {member.name}
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
+
 
             {/* チーム一覧 */}
             <div className="section">
