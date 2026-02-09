@@ -1,73 +1,51 @@
-# React + TypeScript + Vite
+# StageFlow.io
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ダンスイベントなどの現在進行管理・タイムテーブル作成を支援するWebアプリケーションです。
+面倒な時間計算や、メンバーの着替え時間（休憩時間）を考慮した並び替えを自動化します。
 
-Currently, two official plugins are available:
+**👉 アプリを利用する: [https://GitHatake.github.io/StageFlow.io/](https://GitHatake.github.io/StageFlow.io/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 主な機能
 
-## React Compiler
+### 1. チーム登録 & 管理
+- 出演チーム名、所要時間、出演メンバーを登録できます。
+- **希望ブロック（A, B, C...）** を指定して、大まかな構成を決めることができます。
+- LINEやメモ帳からメンバーリストを貼り付けるだけで、自動的にメンバーを認識します。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. タイムテーブル自動作成
+- **ドラッグ&ドロップ**で直感的に順番を入れ替えられます。
+- **自動ソート機能**:
+    - 指定された進行ブロック順（A→B→C...）に並べ替えます。
+    - メンバーの**着替え時間（休憩時間）**が確保できるように、出演順を自動で最適化します。
+- 休憩時間が不足している箇所には「⚠️」マークで警告を表示します。
 
-## Expanding the ESLint configuration
+### 3. メンバー出演状況の可視化
+- メンバーごとの出演スケジュールをタイムライン形式で確認できます。
+- 誰がいつ忙しいか、休憩が足りているかが一目でわかります。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 4. アプリとしてインストール (PWA)
+- **iPhone/iPad**: Safariの「共有」ボタン → 「ホーム画面に追加」
+- **Android/PC**: 画面の案内またはブラウザメニューから「アプリをインストール」
+- インストールすると、ホーム画面からワンタップで起動でき、オフラインでも動作します。
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 5. データの保存と共有
+- **画像で保存**: タイムテーブルを画像として保存し、LINEなどで共有できます。
+- **データ共有**: 編集中のデータをファイルとして書き出し、別の端末に読み込ませて編集を再開できます。
+- **安心のデータ保存**: データはブラウザ内（IndexedDB）に安全に保存されます。
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 開発者向け情報
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 技術スタック
+- React
+- TypeScript
+- Vite
+- Zustand (State Management)
+- dnd-kit (Drag & Drop)
+- Tailwind CSS (Styling)
+- Github Pages (Hosting)
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### ローカルでの実行
+```bash
+npm install
+npm run dev
 ```
