@@ -114,7 +114,7 @@ export function Timeline({ event, onPerformanceClick }: TimelineProps) {
     };
 
     const handleAutoSort = () => {
-        const sortedIds = autoSortPerformances(event.performances, event.interval);
+        const sortedIds = autoSortPerformances(event.performances, event.blocks, event.interval);
         reorderPerformances(event.id, sortedIds);
     };
 
