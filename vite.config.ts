@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'StageFlow',
         short_name: 'StageFlow',
         description: 'ダンスイベントなどの進行管理・タイムテーブル作成アプリ',
-        theme_color: '#ffffff',
+        theme_color: '#fff5f7',
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -28,7 +28,7 @@ export default defineConfig({
         ],
         start_url: '.',
         display: 'standalone',
-        background_color: '#ffffff'
+        background_color: '#fff5f7'
       }
     })
   ],
