@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/StageFlow.io/sw.js', { scope: '/StageFlow.io/' })})}
