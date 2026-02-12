@@ -19,6 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { PerformanceCard } from './PerformanceCard';
 import { AddPerformanceModal } from './AddPerformanceModal';
+import { EditPerformanceModal } from './EditPerformanceModal';
 import type { PerformanceWithTime } from '../types';
 import { calculateTimes, checkWarnings, autoSortPerformances } from '../utils/timeCalculation';
 import { useAppStore, useCurrentEvent } from '../store/useAppStore';
@@ -52,6 +53,7 @@ export const TimetableScreen = forwardRef<HTMLDivElement>((_, ref) => {
     const event = useCurrentEvent();
     const { reorderPerformances } = useAppStore();
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingPerformance, setEditingPerformance] = useState<PerformanceWithTime | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -69,7 +71,11 @@ export const TimetableScreen = forwardRef<HTMLDivElement>((_, ref) => {
         return performancesWithWarnings.filter((p) => p.warnings.length > 0).length;
     }, [performancesWithWarnings]);
 
-    // Group performances by block for display - Removed unused code
+    // Helper to get block name
+    const getBlockName = (blockId: string) => {
+        const block = event?.blocks.find((b) => b.id === blockId);
+        return block ? block.name : '';
+    };
 
     if (!event) return null;
 
@@ -160,30 +166,61 @@ export const TimetableScreen = forwardRef<HTMLDivElement>((_, ref) => {
                     items={performancesWithWarnings.map((p) => p.id)}
                     strategy={verticalListSortingStrategy}
                 >
-                    {performancesWithWarnings.map((perf) => (
-                        <div key={perf.id}>
-                            {/* Time marker */}
+                    <div className="timetable-list">
+                        {performancesWithWarnings.map((perf, index) => {
+                            const prevPerf = index > 0 ? performancesWithWarnings[index - 1] : null;
+                            const currentBlockId = perf.preferredBlock;
+                            const prevBlockId = prevPerf?.preferredBlock;
+                            const showBlockHeader = currentBlockId && currentBlockId !== prevBlockId;
+
+                            return (
+                                <div key={perf.id}>
+                                    {/* Block Divider */}
+                                    {showBlockHeader && (
+                                        <div className="block-divider">
+                                            <div className="block-divider-line"></div>
+                                            <div className="block-divider-label">
+                                                {getBlockName(currentBlockId)}
+                                            </div>
+                                            <div className="block-divider-line"></div>
+                                        </div>
+                                    )}
+
+                                    {/* Time marker */}
+                                    <div className="time-marker">
+                                        {formatTime(perf.startTime)}
+                                    </div>
+                                    <SortableItem
+                                        performance={perf}
+                                        members={event.members}
+                                        onClick={perf.type === 'break' ? () => setEditingPerformance(perf) : undefined}
+                                    />
+                                </div>
+                            );
+                        })}
+                        {/* End time marker */}
+                        {performancesWithWarnings.length > 0 && (
                             <div className="time-marker">
-                                {formatTime(perf.startTime)}
+                                {formatTime(performancesWithWarnings[performancesWithWarnings.length - 1].endTime)}
+                                <span style={{ marginLeft: '8px', fontWeight: 500 }}>終了</span>
                             </div>
-                            <SortableItem
-                                performance={perf}
-                                members={event.members}
-                            />
-                        </div>
-                    ))}
-                    {/* End time marker */}
-                    {performancesWithWarnings.length > 0 && (
-                        <div className="time-marker">
-                            {formatTime(performancesWithWarnings[performancesWithWarnings.length - 1].endTime)}
-                            <span style={{ marginLeft: '8px', fontWeight: 500 }}>終了</span>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </SortableContext>
             </DndContext>
 
             {showAddModal && (
                 <AddPerformanceModal onClose={() => setShowAddModal(false)} />
+            )}
+
+            {editingPerformance && (
+                <div style={{ position: 'fixed', zIndex: 1000 }}>
+                    <div className="modal-overlay" onClick={() => setEditingPerformance(null)}></div>
+                    <EditPerformanceModal
+                        performance={editingPerformance}
+                        onClose={() => setEditingPerformance(null)}
+                    />
+                </div>
             )}
         </div>
     );

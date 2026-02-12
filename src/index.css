@@ -466,6 +466,13 @@ h3 {
   gap: var(--spacing-md);
 }
 
+/* Timetable (Safe Scroll Zone) */
+.timetable-list {
+  padding-left: var(--spacing-xl);
+  padding-right: var(--spacing-xl);
+  /* Ensure touches on the side don't trigger drag immediately/accidentally on edge cards */
+}
+
 /* Interval selector */
 .interval-options {
   display: flex;
