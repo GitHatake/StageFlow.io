@@ -2,17 +2,16 @@ import pako from 'pako';
 import { v4 as uuidv4 } from 'uuid';
 import type { Event, Performance, Member, Block } from '../types';
 
-// Simplified types for minification
-type MinifiedMember = [string, string]; // [id, name]
-type MinifiedBlock = [string, string]; // [id, name]
-type MinifiedPerformance = [string, number, string, number, string[], string]; // [id, type(0:team,1:break), title, duration, memberIds, preferredBlock]
-
+// Optimized types for minification
+// m: names only. Re-generate IDs on import.
+// b: names only.
+// p: [type, title, duration, memberIndices, preferredBlockIndex]
 interface MinifiedEvent {
     n: string; // name
     i: number; // interval
-    m: MinifiedMember[];
-    p: MinifiedPerformance[];
-    b: MinifiedBlock[];
+    m: string[]; // member names
+    p: [number, string, number, number[], number][]; // performances
+    b: string[]; // block names
 }
 
 const TYPE_MAP: { [key: string]: number } = {
@@ -26,23 +25,36 @@ const TYPE_MAP_REV: { [key: number]: 'team' | 'break' } = {
 };
 
 export function compressEventData(event: Event): string {
+    // Map members to indices
+    const memberIdMap = new Map<string, number>();
+    const memberNames = event.members.map((m, i) => {
+        memberIdMap.set(m.id, i);
+        return m.name;
+    });
+
+    // Map blocks to indices
+    const blockIdMap = new Map<string, number>();
+    const blockNames = event.blocks.map((b, i) => {
+        blockIdMap.set(b.id, i);
+        return b.name;
+    });
+
     const minified: MinifiedEvent = {
         n: event.name,
         i: event.interval,
-        m: event.members.map(m => [m.id, m.name]),
+        m: memberNames,
+        b: blockNames,
         p: event.performances.map(perf => [
-            perf.id,
             TYPE_MAP[perf.type] ?? 0,
             perf.title,
             perf.duration,
-            perf.memberIds,
-            perf.preferredBlock || ''
-        ]),
-        b: event.blocks.map(b => [b.id, b.name])
+            perf.memberIds.map(id => memberIdMap.get(id) ?? -1).filter(idx => idx !== -1),
+            perf.preferredBlock ? (blockIdMap.get(perf.preferredBlock) ?? -1) : -1
+        ])
     };
 
     const jsonString = JSON.stringify(minified);
-    const compressed = pako.deflate(jsonString);
+    const compressed = pako.deflate(jsonString); // Default compression level
 
     // Uint8Array to Binary String
     let binary = '';
@@ -66,18 +78,35 @@ export function decompressEventData(base64: string): Partial<Event> | null {
         const decompressed = pako.inflate(bytes, { to: 'string' });
         const minified: MinifiedEvent = JSON.parse(decompressed);
 
-        const members: Member[] = minified.m.map(([id, name]) => ({ id, name }));
-        const blocks: Block[] = minified.b ? minified.b.map(([id, name], index) => ({ id, name, order: index })) : [];
+        // Reconstruct Members (New IDs)
+        const members: Member[] = minified.m.map(name => ({
+            id: uuidv4(),
+            name
+        }));
 
-        const performances: Performance[] = minified.p.map(([id, typeCode, title, duration, memberIds, preferredBlock], index) => ({
-            id,
-            type: TYPE_MAP_REV[typeCode] || 'team',
-            title,
-            duration,
-            memberIds,
-            preferredBlock,
+        // Reconstruct Blocks (New IDs)
+        const blocks: Block[] = minified.b.map((name, index) => ({
+            id: uuidv4(),
+            name,
             order: index
         }));
+
+        // Reconstruct Performances
+        const performances: Performance[] = minified.p.map(([typeCode, title, duration, memberIndices, blockIndex], index) => {
+            // Map indices back to new IDs
+            const memberIds = memberIndices.map(idx => members[idx]?.id).filter(id => !!id);
+            const preferredBlock = (blockIndex >= 0 && blocks[blockIndex]) ? blocks[blockIndex].id : '';
+
+            return {
+                id: uuidv4(),
+                type: TYPE_MAP_REV[typeCode] || 'team',
+                title,
+                duration,
+                memberIds,
+                preferredBlock,
+                order: index
+            };
+        });
 
         return {
             id: uuidv4(),

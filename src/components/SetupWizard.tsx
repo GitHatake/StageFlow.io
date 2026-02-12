@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { parseMemberNames } from '../utils/timeCalculation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { InstallPrompt } from './InstallPrompt';
+import jsQR from 'jsqr';
+import { decompressEventData } from '../utils/dataCompression';
+import { ChevronLeft, ChevronRight, ScanLine } from 'lucide-react';
 
 type Step = 'event' | 'members' | 'interval';
 
@@ -11,6 +13,7 @@ export function SetupWizard() {
     const [eventName, setEventName] = useState('');
     const [memberText, setMemberText] = useState('');
     const [interval, setInterval] = useState<number>(10);
+    const [isScanning, setIsScanning] = useState(false);
 
     const { createEvent, addMembers, completeSetup, importTimetableData } = useAppStore();
 
@@ -40,6 +43,69 @@ export function SetupWizard() {
             }
         };
         reader.readAsText(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleImportImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    setIsScanning(false);
+                    return;
+                }
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    try {
+                        const restoredEvent = decompressEventData(code.data);
+                        if (restoredEvent) {
+                            // Create new event from restored data
+                            const newEventId = createEvent(restoredEvent.name || 'Restored Event', restoredEvent.interval || 10);
+
+                            const importData = {
+                                members: restoredEvent.members,
+                                performances: restoredEvent.performances,
+                                blocks: restoredEvent.blocks,
+                            };
+
+                            const success = importTimetableData(newEventId, JSON.stringify(importData));
+
+                            if (success) {
+                                completeSetup();
+                            } else {
+                                alert('データの形式が合いませんでした');
+                            }
+                        } else {
+                            alert('QRコードのデータが無効です');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert('データの読み込みに失敗しました');
+                    }
+                } else {
+                    alert('QRコードが見つかりませんでした');
+                }
+                setIsScanning(false);
+            };
+            img.src = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
     };
 
     const handleNext = () => {
@@ -96,21 +162,39 @@ export function SetupWizard() {
 
                         <div style={{ marginTop: 'var(--spacing-xl)', paddingTop: 'var(--spacing-md)', borderTop: '1px solid var(--color-border)' }}>
                             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-sm)' }}>
-                                または、以前保存したファイルから復元
+                                または、以前保存したデータから復元
                             </p>
-                            <button
-                                className="btn btn-secondary"
-                                style={{ width: '100%' }}
-                                onClick={() => document.getElementById('import-file-input')?.click()}
-                            >
-                                📂 ファイルから読み込む
-                            </button>
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    style={{ width: '100%' }}
+                                    onClick={() => document.getElementById('import-file-input')?.click()}
+                                >
+                                    📂 ファイルから読み込む
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                    onClick={() => document.getElementById('import-image-input')?.click()}
+                                    disabled={isScanning}
+                                >
+                                    <ScanLine size={18} />
+                                    {isScanning ? '解析中...' : '画像から復元する'}
+                                </button>
+                            </div>
                             <input
                                 id="import-file-input"
                                 type="file"
                                 accept=".json"
                                 style={{ display: 'none' }}
                                 onChange={handleImportFile}
+                            />
+                            <input
+                                id="import-image-input"
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={handleImportImage}
                             />
                         </div>
 
