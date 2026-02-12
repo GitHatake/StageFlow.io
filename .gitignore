@@ -23,5 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+
 # Requirements document
 要件定義書*.md
+
+# Vite cache
+.vite
