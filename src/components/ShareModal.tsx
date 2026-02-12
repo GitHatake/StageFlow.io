@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
-import { X, Image as ImageIcon, Share2, Upload, FileText, Check, AlertCircle } from 'lucide-react';
+import { X, Image as ImageIcon, Share2, Upload, FileText, Check, AlertCircle, ScanLine } from 'lucide-react';
+import jsQR from 'jsqr';
 import { useAppStore, useCurrentEvent } from '../store/useAppStore';
 import { getExportFilename } from '../utils/timeCalculation';
+import { decompressEventData } from '../utils/dataCompression';
 
 interface ShareModalProps {
     onClose: () => void;
@@ -13,6 +15,7 @@ export function ShareModal({ onClose, onExportImage, isExportingImage }: ShareMo
     const event = useCurrentEvent();
     const { exportTimetableData, importTimetableData } = useAppStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
     const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [statusMessage, setStatusMessage] = useState('');
 
@@ -32,6 +35,10 @@ export function ShareModal({ onClose, onExportImage, isExportingImage }: ShareMo
         fileInputRef.current?.click();
     };
 
+    const handleImageImportClick = () => {
+        imageInputRef.current?.click();
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !event) return;
@@ -44,7 +51,6 @@ export function ShareModal({ onClose, onExportImage, isExportingImage }: ShareMo
                 if (success) {
                     setImportStatus('success');
                     setStatusMessage('データを読み込みました！');
-                    // Optional: Close modal after success? Keep open for confirmation.
                 } else {
                     setImportStatus('error');
                     setStatusMessage('データの形式が違います');
@@ -55,7 +61,78 @@ export function ShareModal({ onClose, onExportImage, isExportingImage }: ShareMo
             }
         };
         reader.readAsText(file);
-        // Reset input
+        e.target.value = '';
+    };
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !event) return;
+
+        setImportStatus('idle');
+        setStatusMessage('画像を解析中...');
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    try {
+                        // Attempt to decompress data from QR code
+                        const restoredEvent = decompressEventData(code.data);
+                        if (restoredEvent) {
+                            // Valid data found! Now import it.
+                            // Since importTimetableData expects a specific format or string, 
+                            // we might need to serialize it back to JSON string or adapt importTimetableData.
+                            // importTimetableData takes a JSON string of { members, performances, blocks }.
+                            // decompressEventData returns a Partial<Event> object.
+
+                            // Let's verify structure compatibility.
+                            // importTimetableData handles: members, performances, blocks.
+                            // restoredEvent has these.
+
+                            const importData = {
+                                members: restoredEvent.members,
+                                performances: restoredEvent.performances,
+                                blocks: restoredEvent.blocks,
+                            };
+
+                            const success = importTimetableData(event.id, JSON.stringify(importData));
+
+                            if (success) {
+                                setImportStatus('success');
+                                setStatusMessage('QRコードから復元しました！');
+                            } else {
+                                setImportStatus('error');
+                                setStatusMessage('データの形式が合いませんでした');
+                            }
+                        } else {
+                            setImportStatus('error');
+                            setStatusMessage('QRコードのデータが無効です');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        setImportStatus('error');
+                        setStatusMessage('データの読み込みに失敗しました');
+                    }
+                } else {
+                    setImportStatus('error');
+                    setStatusMessage('QRコードが見つかりませんでした');
+                }
+            };
+            img.src = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
         e.target.value = '';
     };
 
@@ -79,30 +156,56 @@ export function ShareModal({ onClose, onExportImage, isExportingImage }: ShareMo
                         border: '1px solid var(--color-border)',
                     }}>
                         <div className="flex items-center gap-sm" style={{ marginBottom: '8px' }}>
-                            <ImageIcon size={24} style={{ color: '#ec4899' }} /> {/* Pink for Image */}
+                            <ImageIcon size={24} style={{ color: '#ec4899' }} />
                             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>画像で送る</h3>
                         </div>
                         <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
                             タイムテーブルを画像として保存します。<br />
                             LINEやSNSでメンバーに送るのに便利です。
                         </p>
-                        <button
-                            className="btn btn-primary"
-                            onClick={onExportImage}
-                            disabled={isExportingImage}
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                fontSize: '1rem',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                gap: '8px'
-                            }}
-                        >
-                            <ImageIcon size={20} />
-                            {isExportingImage ? '画像を作成中...' : '画像を保存する'}
-                        </button>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={onExportImage}
+                                disabled={isExportingImage}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    fontSize: '1rem',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                <ImageIcon size={20} />
+                                {isExportingImage ? '画像を作成中...' : '画像を保存する'}
+                            </button>
+
+                            <button
+                                className="btn btn-secondary"
+                                onClick={handleImageImportClick}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    fontSize: '1rem',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                <ScanLine size={20} />
+                                画像から復元する
+                            </button>
+                            <input
+                                type="file"
+                                ref={imageInputRef}
+                                onChange={handleImageChange}
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                            />
+                        </div>
                     </div>
 
                     {/* Data Share Section */}
@@ -113,7 +216,7 @@ export function ShareModal({ onClose, onExportImage, isExportingImage }: ShareMo
                         border: '1px solid var(--color-border)',
                     }}>
                         <div className="flex items-center gap-sm" style={{ marginBottom: '8px' }}>
-                            <Share2 size={24} style={{ color: '#3b82f6' }} /> {/* Blue for Share */}
+                            <Share2 size={24} style={{ color: '#3b82f6' }} />
                             <h3 style={{ margin: 0, fontSize: '1.1rem' }}>データ共有（編集用）</h3>
                         </div>
                         <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
