@@ -49,7 +49,7 @@ function MainApp() {
       wrapper.style.position = 'fixed';
       wrapper.style.top = '-10000px';
       wrapper.style.left = '-10000px';
-      wrapper.style.width = '1200px'; // Fixed width for consistent output
+      wrapper.style.width = `${timetableRef.current.scrollWidth}px`; // Match content width
       wrapper.style.backgroundColor = '#fff5f7'; // Theme bg
       wrapper.style.color = '#333';
       wrapper.style.fontFamily = '"Zen Maru Gothic", sans-serif';
@@ -58,44 +58,30 @@ function MainApp() {
       // 3. Create Header
       const header = document.createElement('div');
       header.style.display = 'flex';
-      header.style.justifyContent = 'space-between';
-      header.style.alignItems = 'center';
-      header.style.padding = '24px 32px';
-      header.style.background = 'linear-gradient(135deg, #fff0f5 0%, #fff 100%)';
+      header.style.flexDirection = 'column'; // Stack vertically
+      header.style.alignItems = 'center'; // Center horizontally
+      header.style.justifyContent = 'center';
+      header.style.padding = '32px';
+      header.style.background = 'linear-gradient(180deg, #fff0f5 0%, #fff 100%)'; // Top-to-bottom gradient
       header.style.borderBottom = '1px solid rgba(0,0,0,0.05)';
+      header.style.textAlign = 'center';
 
       // Logo/Title Section
       const titleSection = document.createElement('div');
       titleSection.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <img src="pwa-192x192.png" style="width: 48px; height: 48px; border-radius: 12px; object-fit: cover;" alt="StageFlow Logo" />
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+          <img src="pwa-192x192.png" style="width: 64px; height: 64px; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" alt="StageFlow Logo" />
           <div>
-            <h1 style="margin: 0; font-size: 24px; color: #1f2937;">${event.name}</h1>
-            <p style="margin: 4px 0 0; font-size: 14px; color: #6b7280;">Produced by StageFlow</p>
+            <h1 style="margin: 0; font-size: 32px; color: #1f2937; line-height: 1.2;">${event.name}</h1>
+            <p style="margin: 8px 0 0; font-size: 14px; color: #6b7280;">Produced by StageFlow</p>
           </div>
         </div>
       `;
 
-      // QR Section
-      const qrSection = document.createElement('div');
-      qrSection.style.display = 'flex';
-      qrSection.style.alignItems = 'center';
-      qrSection.style.gap = '12px';
-      qrSection.style.backgroundColor = 'white';
-      qrSection.style.padding = '8px';
-      qrSection.style.borderRadius = '8px';
-      qrSection.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-      qrSection.innerHTML = `
-        <div style="text-align: right;">
-          <p style="margin: 0; font-size: 10px; font-weight: bold; color: #4b5563;">Scan to Restore</p>
-          <p style="margin: 0; font-size: 8px; color: #9ca3af;">データ復元用QR</p>
-        </div>
-        <img src="${qrDataUrl}" style="width: 100px; height: 100px; display: block;" />
-      `;
-
       header.appendChild(titleSection);
-      header.appendChild(qrSection);
       wrapper.appendChild(header);
+
+
 
       // 4. Clone Timetable
       const timetableClone = timetableRef.current.cloneNode(true) as HTMLElement;
@@ -108,6 +94,30 @@ function MainApp() {
       timetableClone.style.overflow = 'visible';
 
       wrapper.appendChild(timetableClone);
+
+      // 5. Create Footer (QR)
+      const footer = document.createElement('div');
+      footer.style.display = 'flex';
+      footer.style.justifyContent = 'center';
+      footer.style.padding = '32px';
+      footer.style.background = 'white';
+      footer.style.borderTop = '1px solid rgba(0,0,0,0.05)';
+
+      const qrSection = document.createElement('div');
+      qrSection.style.display = 'flex';
+      qrSection.style.flexDirection = 'column';
+      qrSection.style.alignItems = 'center';
+      qrSection.style.gap = '8px';
+      qrSection.innerHTML = `
+        <img src="${qrDataUrl}" style="width: 120px; height: 120px; display: block;" />
+        <div style="text-align: center;">
+          <p style="margin: 0; font-size: 10px; font-weight: bold; color: #4b5563;">Scan to Restore</p>
+          <p style="margin: 0; font-size: 8px; color: #9ca3af;">データ復元用QR</p>
+        </div>
+      `;
+
+      footer.appendChild(qrSection);
+      wrapper.appendChild(footer);
 
       // 5. Capture
       const canvas = await html2canvas(wrapper, {
